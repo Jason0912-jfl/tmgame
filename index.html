@@ -1,30 +1,44 @@
 <!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Teachable Machine Pose Model</title>
-    <link rel="stylesheet" href="./css/style.css" />
-  </head>
-  <body>
-    <h1>Teachable Machine Pose Model</h1>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Teachable Machine Pose Model</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+
+<body>
+  <h1>🎮 AI Game Center</h1>
+
+  <!-- 게임 선택 화면 -->
+  <div id="game-selector">
+    <button class="choice-btn" onclick="selectGame('pose')">🍎 포즈 게임 (Fruit)</button>
+    <button class="choice-btn" onclick="selectGame('shooting')">🚀 슈팅 게임 (Space)</button>
+  </div>
+
+  <!-- 게임 플레이 화면 (초기엔 숨김) -->
+  <div id="game-play-area" style="display: none;">
     <div class="button-container">
-      <button type="button" id="startBtn" onclick="init()">Start</button>
-      <button type="button" id="stopBtn" onclick="stop()" disabled>Stop</button>
+      <button type="button" id="start-btn" onclick="init()">Start Game</button>
+      <button type="button" id="back-btn" onclick="goBack()">뒤로가기</button>
     </div>
     <div class="canvas-container">
       <canvas id="canvas"></canvas>
       <div id="max-prediction"></div>
     </div>
     <div id="label-container"></div>
+  </div>
 
-    <!-- Teachable Machine 라이브러리 -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+  <!-- Teachable Machine 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
 
-    <!-- 애플리케이션 모듈 -->
-    <script src="./js/stabilizer.js"></script>
-    <script src="./js/poseEngine.js"></script>
-    <script src="./js/gameEngine.js"></script>
-    <script src="./js/main.js"></script>
-  </body>
+  <!-- 애플리케이션 모듈 -->
+  <script src="./js/stabilizer.js"></script>
+  <script src="./js/poseEngine.js"></script>
+  <script src="./js/gameEngine.js"></script>
+  <script src="./js/shootingGame.js"></script>
+  <script src="./js/main.js"></script>
+</body>
+
 </html>
