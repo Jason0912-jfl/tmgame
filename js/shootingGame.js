@@ -139,8 +139,8 @@ window.ShootingGameEngine = class ShootingGameEngine {
                 this.playerY + this.playerHeight > item.y
             ) {
                 this.equipWeapon(item.weaponKey);
-                this.soundBoard.startOsc(600, "sine"); // 획득음
-                this.soundBoard.stopOsc(0.1);
+                this.soundBoard.playTone(600, 0.1, "sine"); // 획득음
+                // this.soundBoard.stopOsc(0.1); // Removed: playTone handles duration
                 this.items.splice(i, 1);
                 continue;
             }
