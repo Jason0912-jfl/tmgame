@@ -2,6 +2,8 @@
  * shootingGame.js
  * 키보드 조작 슈팅 게임 (Space Shooter) 로직
  * 고급 메커니즘: 다양한 무기, 탄창, 아이템 드롭, 사운드 (개선됨)
+ * 2024-05-22 업데이트: 적 속도 감소, 플레이어 체력 2 (2번 맞아야 사망)
+ * 2024-05-22 추가: 아이템 자석 효과, 획득 텍스트, 탄창 중첩
  */
 
 // --- 무기 데이터베이스 ---
@@ -27,6 +29,7 @@ window.ShootingGameEngine = class ShootingGameEngine {
         this.playerWidth = 40;
         this.playerHeight = 40;
         this.playerSpeed = 5;
+        this.playerHp = 2; // 플레이어 체력 (기본 2)
 
         // 무기 시스템
         this.currentWeapon = null;
@@ -38,6 +41,7 @@ window.ShootingGameEngine = class ShootingGameEngine {
         this.missiles = [];
         this.enemies = [];
         this.items = []; // 드롭된 아이템들
+        this.floatingTexts = []; // 부유 텍스트 (아이템 획득 알림 등)
         this.spawnTimer = 0;
         this.spawnInterval = 60;
 
@@ -63,8 +67,10 @@ window.ShootingGameEngine = class ShootingGameEngine {
         this.missiles = [];
         this.enemies = [];
         this.items = [];
+        this.floatingTexts = [];
         this.playerX = 100;
         this.spawnInterval = 60;
+        this.playerHp = 2; // 게임 시작 시 체력 초기화
 
         // 랜덤 무기 지급
         this.equipRandomWeapon();
@@ -75,6 +81,7 @@ window.ShootingGameEngine = class ShootingGameEngine {
     }
 
     stop() {
+        if (!this.isGameActive) return;
         this.isGameActive = false;
         if (this.gameTimer) clearInterval(this.gameTimer); // 타이머 사용 시
 
@@ -108,10 +115,21 @@ window.ShootingGameEngine = class ShootingGameEngine {
             if (m.y < -20) this.missiles.splice(i, 1);
         }
 
-        // 4. 아이템 이동 및 획득
+        // 4. 아이템 이동 및 획득 (자석 효과 추가)
         for (let i = this.items.length - 1; i >= 0; i--) {
             let item = this.items[i];
-            item.y += 2; // 천천히 떨어짐
+
+            // 자석 효과: 플레이어 근처(거리 100 이내)에 오면 끌려옴
+            const dx = (this.playerX + this.playerWidth / 2) - (item.x + item.size / 2);
+            const dy = (this.playerY + this.playerHeight / 2) - (item.y + item.size / 2);
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 100) {
+                item.x += dx * 0.05; // 5%씩 접근
+                item.y += dy * 0.05;
+            } else {
+                item.y += 2; // 평소엔 천천히 떨어짐
+            }
 
             // 아이템 획득 충돌 검사
             if (
@@ -128,6 +146,14 @@ window.ShootingGameEngine = class ShootingGameEngine {
             }
 
             if (item.y > 200) this.items.splice(i, 1);
+        }
+
+        // 4.5 부유 텍스트 업데이트
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            let ft = this.floatingTexts[i];
+            ft.y -= 1; // 위로 떠오름
+            ft.life--;
+            if (ft.life <= 0) this.floatingTexts.splice(i, 1);
         }
 
         // 5. 적 생성
@@ -175,9 +201,26 @@ window.ShootingGameEngine = class ShootingGameEngine {
                 this.playerY < enemy.y + enemy.size &&
                 this.playerY + this.playerHeight > enemy.y
             ) {
-                this.soundBoard.playBad();
-                this.stop(); // 게임 오버
-                return;
+                // 충돌 처리 (HP 감소)
+                this.playerHp--;
+                this.enemies.splice(i, 1); // 부딪힌 적은 사라짐 (자폭)
+                this.soundBoard.playBad(); // 피격음
+
+                // 피격 텍스트
+                this.floatingTexts.push({
+                    x: this.playerX,
+                    y: this.playerY - 20,
+                    text: "-1 HP",
+                    life: 60,
+                    color: "#ff0000"
+                });
+
+                if (this.playerHp <= 0) {
+                    this.stop(); // 게임 오버
+                    return;
+                }
+
+                continue;
             }
 
             if (enemy.y > 200) {
@@ -194,9 +237,26 @@ window.ShootingGameEngine = class ShootingGameEngine {
 
     equipWeapon(key) {
         const w = WEAPONS[key];
-        // 깊은 복사로 새 인스턴스 생성 (탄창 관리를 위해)
-        this.currentWeapon = { ...w, key: key };
-        // UI 업데이트 알림 (필요 시)
+        let text = "";
+
+        // 같은 무기면 탄창 추가 (중첩)
+        if (this.currentWeapon && this.currentWeapon.key === key) {
+            this.currentWeapon.ammo += w.ammo; // 전체 탄창만큼 충전
+            text = `Ammo +${w.ammo}`;
+        } else {
+            // 새 무기 장착
+            this.currentWeapon = { ...w, key: key };
+            text = `${w.name}!`;
+        }
+
+        // 텍스트 띄우기
+        this.floatingTexts.push({
+            x: this.playerX, // 플레이어 머리 위나, 아이템 획득 위치
+            y: this.playerY - 10,
+            text: text,
+            life: 60, // 60 frames (1 sec)
+            color: "#ffff00"
+        });
     }
 
     attemptShoot() {
@@ -241,7 +301,9 @@ window.ShootingGameEngine = class ShootingGameEngine {
         let isBoss = Math.random() < 0.05; // 5% 확률 보스
         let hp = isBoss ? 2000 : 100;
         let size = isBoss ? 60 : 30;
-        let speed = isBoss ? 0.5 : (2 + this.level * 0.1);
+
+        // 속도 하향 조정 (기본 1.5, 레벨당 0.05 증가)
+        let speed = isBoss ? 0.3 : (1.5 + this.level * 0.05);
 
         this.enemies.push({
             x: Math.random() * (200 - size),
@@ -317,6 +379,13 @@ window.ShootingGameEngine = class ShootingGameEngine {
             ctx.fillRect(enemy.x, enemy.y - 5, enemy.size * (enemy.hp / enemy.maxHp), 3);
         }
 
+        // 부유 텍스트
+        for (const ft of this.floatingTexts) {
+            ctx.fillStyle = ft.color;
+            ctx.font = "bold 12px Arial";
+            ctx.fillText(ft.text, ft.x, ft.y);
+        }
+
         // UI (무기 정보)
         ctx.fillStyle = "white";
         ctx.strokeStyle = "black";
@@ -332,6 +401,10 @@ window.ShootingGameEngine = class ShootingGameEngine {
         const weaponInfo = `${this.currentWeapon.name} [${this.currentWeapon.ammo}]`;
         ctx.fillStyle = this.currentWeapon.ammo > 0 ? "#ffff00" : "#ff0000";
         ctx.fillText(weaponInfo, 190, 20);
+
+        // 플레이어 HP 표시 (하트)
+        let hearts = "❤️".repeat(this.playerHp);
+        ctx.fillText(hearts, 190, 40); // 무기 정보 아래에 표시
 
         // 조작 가이드
         ctx.textAlign = "left";

@@ -59,6 +59,7 @@ window.GameEngine = class GameEngine {
   }
 
   stop() {
+    if (!this.isGameActive) return;
     this.isGameActive = false;
     if (this.gameTimer) clearInterval(this.gameTimer);
 
